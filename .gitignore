@@ -5,6 +5,8 @@ lightning_logs/
 # virtual environment
 .venv/
 
+*.log
+lightning_logs
 
 __pycache__/
 .vscode/

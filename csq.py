@@ -25,8 +25,8 @@ import shutil
 import fairscale
 
 # Make tqdm module to print in a 1 line
-from functools import partial
-tqdm = partial(tqdm, position=0, leave=True)
+# from functools import partial
+# tqdm = partial(tqdm, position=0, leave=True)
 
 from util import *
 from dataModule import *
@@ -124,7 +124,8 @@ class CSQLightening(pl.LightningModule):
     weight = weight.type_as(hash_codes)
 
     # Center Similarity Loss
-    BCELoss = nn.BCELoss(weight=weight.unsqueeze(1).repeat(1,self.bit))
+    # BCELoss = nn.BCELoss(weight=weight.unsqueeze(1).repeat(1,self.bit))
+    BCELoss = nn.BCELoss()
     C_loss = BCELoss(0.5 * (hash_codes + 1), 
                         0.5 * (hash_centers + 1))
     # Quantization Loss
@@ -138,26 +139,10 @@ class CSQLightening(pl.LightningModule):
       hash_codes = self.forward(data)
       loss = self.CSQ_loss_function(hash_codes, labels)
 
-      # Log template
-      # self.log('my_loss', loss, on_step=True, on_epoch=True, prog_bar=True, logger=True)
-
       # 在这里，好像loss本身就会被记录并且显示在progress bar里，
       # 所以"Train_loss_step"我就不在progress bar里显示了，只在tensor board里面显示
       self.log("Train_loss_step", loss, logger=True)
       return loss
-
-  # def training_epoch_end(self, outputs):
-  #     train_loss_epoch = torch.stack([x['loss'] for x in outputs]).mean()
-
-  #     database_dataloader = self.trainer.datamodule.database_dataloader
-  #     train_dataloader = self.trainer.datamodule.train_dataloader()
-
-
-  #     if not self.trainer.running_sanity_check:
-  #         print(f"Epoch: {self.current_epoch}, Train_loss_epoch: {train_loss_epoch:.2f}, Train_MAP_epoch: {train_mAP:.3f}")
-
-  #     value = {"Train_loss_epoch": train_loss_epoch, "Train_MAP_epoch": train_mAP}
-  #     self.log_dict(value, prog_bar=True, logger=True, on_epoch=True)
 
 
   def validation_step(self, val_batch, batch_idx):
@@ -176,22 +161,21 @@ class CSQLightening(pl.LightningModule):
 
       val_MAP, val_metrics_KNN, val_matrics_CHC = compute_metrics(database_dataloader, val_dataloader, self, TOP_K, self.n_class)
       val_labeling_accuracy_KNN, val_F1_score_weighted_average_KNN,\
-       val_F1_score_per_class_median_KNN, val_F1_score_per_class_KNN = val_metrics_KNN
+       val_F1_score_median_KNN, val_F1_score_per_class_KNN = val_metrics_KNN
       val_labeling_accuracy_CHC, val_F1_score_weighted_average_CHC,\
-       val_F1_score_per_class_median_CHC, val_F1_score_per_class_CHC = val_matrics_CHC
+       val_F1_score_median_CHC, val_F1_score_per_class_CHC = val_matrics_CHC
 
       if not self.trainer.running_sanity_check:
           print(f"Epoch: {self.current_epoch}, Val_loss_epoch: {val_loss_epoch:.2f}, Val_MAP_epoch: {val_MAP:.3f}")
-          print(f"val_labeling_accuracy_KNN:{val_labeling_accuracy_KNN:.3f}, val_F1_score_weighted_average_KNN:{val_F1_score_weighted_average_KNN:.3f},\
-           val_F1_score_per_class_median_KNN:{val_F1_score_per_class_median_KNN:.3f}, Val_F1_score_per_class_KNN:{[f'{score:.3f}' for score in val_F1_score_per_class_KNN]}")
+
           print(f"val_labeling_accuracy_CHC:{val_labeling_accuracy_CHC:.3f}, val_F1_score_weighted_average_CHC:{val_F1_score_weighted_average_CHC:.3f},\
-           val_F1_score_per_class_median_CHC:{val_F1_score_per_class_median_CHC:.3f}, Val_F1_score_per_class_CHC:{[f'{score:.3f}' for score in val_F1_score_per_class_CHC]}")
+           val_F1_score_median_CHC:{val_F1_score_median_CHC:.3f}, val_F1_score_per_class_CHC:{[f'{score:.3f}' for score in val_F1_score_per_class_CHC]}")
 
       value = {"Val_loss_epoch": val_loss_epoch, "Val_MAP_epoch": val_MAP, 
                "Val_labeling_accuracy_KNN_epoch": val_labeling_accuracy_KNN, "Val_F1_score_weighted_average_KNN_epoch": val_F1_score_weighted_average_KNN,
-               "Val_F1_score_per_class_median_KNN_epoch": val_F1_score_per_class_median_KNN, 
+               "Val_F1_score_median_KNN_epoch": val_F1_score_median_KNN, 
                "Val_labeling_accuracy_CHC_epoch": val_labeling_accuracy_CHC, "Val_F1_score_weighted_average_CHC_epoch": val_F1_score_weighted_average_CHC,
-               "Val_F1_score_per_class_median_CHC_epoch": val_F1_score_per_class_median_CHC}
+               "Val_F1_score_median_CHC_epoch": val_F1_score_median_CHC}
       self.log_dict(value, prog_bar=True, logger=True)
 
 
@@ -246,13 +230,13 @@ if __name__ == '__main__':
     # train
     pl.callbacks.progress.ProgressBar(refresh_rate=30)
 
-    # datamodule = TMDataModule(import_size=1, num_workers=4)
-    # N_CLASS = 55
-    # N_FEATURES = datamodule.N_FEATURES
+    datamodule = TMDataModule(import_size=1, num_workers=4)
+    N_CLASS = 55
+    N_FEATURES = datamodule.N_FEATURES
 
-    datamodule = BaronHumanDataModule(num_workers=4, batch_size=128)
-    N_CLASS = 13
-    N_FEATURES = 17499
+    # datamodule = BaronHumanDataModule(num_workers=4, batch_size=128)
+    # N_CLASS = 13
+    # N_FEATURES = 17499
 
     # datamodule = Zheng68KDataModule(num_workers=4)
     # N_CLASS = 11
@@ -272,13 +256,16 @@ if __name__ == '__main__':
                                         verbose=True,
                                         mode='max')
 
-    trainer = pl.Trainer(max_epochs=300, 
+    trainer = pl.Trainer(max_epochs=200, 
                         gpus=1, 
                         check_val_every_n_epoch=20,
                         #  limit_train_batches=0.1,
                         #  limit_val_batches=0.2,
                         #  accelerator='ddp',
                         #  plugins='ddp_sharded',
-                        checkpoint_callback=checkpoint_callback)
+                        # checkpoint_callback=checkpoint_callback
+                        )
 
     trainer.fit(model, datamodule)
+
+    trainer.test(model)

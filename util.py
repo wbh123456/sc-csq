@@ -110,11 +110,11 @@ def compute_metrics(database_dataloader, query_dataloader, net, top_k, class_num
       F1_score_per_class_CHC = f1_score(labels_query, labels_pred_CHC, average=None)
 
       # (4) F1_score median
-      F1_score_per_class_median_KNN = statistics.median(F1_score_per_class_KNN)
-      F1_score_per_class_median_CHC = statistics.median(F1_score_per_class_CHC)
+      F1_score_median_KNN = statistics.median(F1_score_per_class_KNN)
+      F1_score_median_CHC = statistics.median(F1_score_per_class_CHC)
 
-      KNN_metrics = (labeling_accuracy_KNN, F1_score_weighted_average_KNN, F1_score_per_class_median_KNN, F1_score_per_class_KNN)
-      CHC_metrics = (labeling_accuracy_CHC, F1_score_weighted_average_CHC, F1_score_per_class_median_CHC, F1_score_per_class_CHC)
+      KNN_metrics = (labeling_accuracy_KNN, F1_score_weighted_average_KNN, F1_score_median_KNN, F1_score_per_class_KNN)
+      CHC_metrics = (labeling_accuracy_CHC, F1_score_weighted_average_CHC, F1_score_median_CHC, F1_score_per_class_CHC)
 
       return MAP, KNN_metrics, CHC_metrics
       
