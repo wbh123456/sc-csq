@@ -62,18 +62,9 @@ def get_hash_centers(n_class, bit):
 
 
 # 计算所有metrics的top-level interface
-def compute_metrics(database_dataloader, query_dataloader, net, top_k, class_num):
+def compute_metrics(query_dataloader, net, class_num):
       ''' Labeling Strategy:
-
-      (a) Majority Vote:  
-      Label the query using the majority labels in the top K nearest 
-      (in hamming space) cells in the database.
-      - Computation Complexity:
-        O(nlogK) per query   --> Current implementation O(nlogn)
-        n = number of cells in database
-      - Very Accurate
-
-      (b) Closest Hash Center:
+      Closest Hash Center:
       Label the query using the label associated to the nearest hash center
       - Computation Complexity:
         O(m) << O(n) per puery
@@ -81,42 +72,25 @@ def compute_metrics(database_dataloader, query_dataloader, net, top_k, class_num
       - Less Accurate
       '''
 
-      binaries_database, labels_database = compute_result(database_dataloader, net)
       binaries_query, labels_query = compute_result(query_dataloader, net)
 
-      # 转换成one-hot encoding，方便后续高效计算
-      labels_database_one_hot = categorical_to_onehot(labels_database, class_num)
-      labels_query_one_hot = categorical_to_onehot(labels_query, class_num)
-
-      # (1) MAP, *****默认给所有得到的average precisions排序，top_k = -1*****
-      MAP = compute_MAP(binaries_database.cpu().numpy(), binaries_query.cpu().numpy(), 
-                        labels_database_one_hot.numpy(), labels_query_one_hot.numpy(), -1)
-
       # 根据自定义的labeling策略，得到预测的labels
-      labels_pred_KNN = get_labels_pred_KNN(binaries_database.cpu().numpy(), binaries_query.cpu().numpy(), 
-                       labels_database_one_hot.numpy(), labels_query_one_hot.numpy(), top_k)
       labels_pred_CHC = get_labels_pred_closest_hash_center(binaries_query.cpu().numpy(), labels_query.numpy(),
                                                             net.hash_centers.numpy())
       
-      # (2) 自定义的labeling策略的accuracy
-      labeling_accuracy_KNN = compute_labeling_strategy_accuracy(labels_pred_KNN, labels_query_one_hot.numpy())
+      # (1) 自定义的labeling策略的accuracy
       labeling_accuracy_CHC = compute_labeling_strategy_accuracy(labels_pred_CHC, labels_query.numpy())
       
-      # (3) F1_score, average = (micro, macro, weighted)
-      F1_score_weighted_average_KNN = f1_score(labels_query_one_hot, labels_pred_KNN, average='weighted')
-      F1_score_per_class_KNN = f1_score(labels_query_one_hot, labels_pred_KNN, average=None)
-
+      # (2) F1_score, average = (micro, macro, weighted)
       F1_score_weighted_average_CHC = f1_score(labels_query, labels_pred_CHC, average='weighted')
       F1_score_per_class_CHC = f1_score(labels_query, labels_pred_CHC, average=None)
 
-      # (4) F1_score median
-      F1_score_median_KNN = statistics.median(F1_score_per_class_KNN)
+      # (3) F1_score median
       F1_score_median_CHC = statistics.median(F1_score_per_class_CHC)
 
-      KNN_metrics = (labeling_accuracy_KNN, F1_score_weighted_average_KNN, F1_score_median_KNN, F1_score_per_class_KNN)
       CHC_metrics = (labeling_accuracy_CHC, F1_score_weighted_average_CHC, F1_score_median_CHC, F1_score_per_class_CHC)
 
-      return MAP, KNN_metrics, CHC_metrics
+      return CHC_metrics
       
 
 
@@ -162,29 +136,6 @@ def compute_MAP(retrieval_binaries, query_binaries, retrieval_labels, query_labe
     topK_map = topK_ave_precision_per_query / num_query
 
     return topK_map
-
-
-# top_k is hyper-parameter
-# Predict label using KNN strategy (a)
-def get_labels_pred_KNN(retrieval_binaries, query_binaries, retrieval_labels, query_labels, top_k):
-    num_query = query_labels.shape[0]
-    labels_pred = []
-    for iter in range(num_query):
-        hamm_dists = CalcHammingDist(query_binaries[iter, :], retrieval_binaries)
-
-        hamm_indexes = np.argsort(hamm_dists)
-
-        retrieval_labels_sort = retrieval_labels[hamm_indexes]
-
-        topK_retrieval_sorted_labels = retrieval_labels_sort[0:top_k]
-
-        # print("topK_retrieval_sorted_labels: ", topK_retrieval_sorted_labels)
-
-        most_frequent_label = find_most_common_label(topK_retrieval_sorted_labels)
-
-        labels_pred.append(most_frequent_label)
-
-    return labels_pred
 
 
 # Predict label using Closest Hash Center strategy (b)

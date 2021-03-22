@@ -22,6 +22,9 @@ from sklearn import preprocessing
 ###------------------------------Utility function for DataLoader---------------------------------###
 # Used to discard labels with occurence smaller than 10
 
+TRAIN_SPLIT = 0.6
+VAL_SPLIT = 0.199
+TEST_SPLIT = 0.2
 
 def preprocess_data(full_labels, import_size=None):
 
@@ -80,18 +83,13 @@ def stratified_split(remaining_indices, full_labels, set1_split_percentage):
 
 
 def split_test_train_val_database_sets(full_dataset, train_percentage, val_percentage, test_percentage):
-    dataset_percentage = 1 - train_percentage - val_percentage - test_percentage
     full_labels = full_dataset.labels
     full_indices = range(len(full_labels))
 
-    database_indices, remaining_indices = stratified_split(
-        full_indices, full_labels, dataset_percentage)
-    train_indices, remaining_indices = stratified_split(
-        remaining_indices, full_labels, train_percentage/(1 - dataset_percentage))
-    val_indices, test_indices = stratified_split(
-        remaining_indices, full_labels, val_percentage/(test_percentage + val_percentage))
+    train_indices, remaining_indices = stratified_split(full_indices, full_labels, train_percentage)
+    val_indices, test_indices = stratified_split(remaining_indices, full_labels, val_percentage/(test_percentage + val_percentage))
 
-    TM_database, TM_train, TM_val, TM_test = (Subset(full_dataset, database_indices),
+    TM_database, TM_train, TM_val, TM_test = (None,
                                               Subset(full_dataset,
                                                      train_indices),
                                               Subset(full_dataset,
@@ -178,14 +176,12 @@ class TMDataModule(pl.LightningDataModule):
         # Step #5: Split indices in stratified way into train, validation, test and database sets
         #          and prepare all datasets based on splited list indices
         self.TM_database, self.TM_train, self.TM_val, self.TM_test = split_test_train_val_database_sets(full_dataset,
-                                                                                                        train_percentage=0.3,
-                                                                                                        val_percentage=0.1,
-                                                                                                        test_percentage=0.1)
+                                                                                                        train_percentage=TRAIN_SPLIT,
+                                                                                                        val_percentage=VAL_SPLIT,
+                                                                                                        test_percentage=TEST_SPLIT)
 
-        self.database_dataloader = DataLoader(self.TM_database, batch_size=self.batch_size,
-                                              num_workers=self.num_workers)
+        self.database_dataloader = None # Deprecated
 
-        print("database size =", len(self.TM_database))
         print("train size =", len(self.TM_train))
         print("val size =", len(self.TM_val))
         print("test size =", len(self.TM_test))
@@ -273,14 +269,12 @@ class BaronHumanDataModule(pl.LightningDataModule):
         full_dataset = CustomDataset(full_data, full_labels)
 
         self.Baron_Human_database, self.Baron_Human_train, self.Baron_Human_val, self.Baron_Human_test = split_test_train_val_database_sets(full_dataset,
-                                                                                                                                            train_percentage=0.3,
-                                                                                                                                            val_percentage=0.1,
-                                                                                                                                            test_percentage=0.1)
+                                                                                                        train_percentage=TRAIN_SPLIT,
+                                                                                                        val_percentage=VAL_SPLIT,
+                                                                                                        test_percentage=TEST_SPLIT)
 
-        self.database_dataloader = DataLoader(self.Baron_Human_database, batch_size=self.batch_size,
-                                              num_workers=self.num_workers)
+        self.database_dataloader = None # Deprecated
 
-        print("database size =", len(self.Baron_Human_database))
         print("train size =", len(self.Baron_Human_train))
         print("val size =", len(self.Baron_Human_val))
         print("test size =", len(self.Baron_Human_test))
@@ -367,14 +361,12 @@ class Zheng68KDataModule(pl.LightningDataModule):
         # Step #5: Split indices in stratified way into train, validation, test and database sets 
         #          and prepare all datasets based on splited list indices
         self.Zheng_68K_database, self.Zheng_68K_train, self.Zheng_68K_val, self.Zheng_68K_test = split_test_train_val_database_sets(full_dataset, 
-                                                                                                        train_percentage=0.3,
-                                                                                                        val_percentage=0.1, 
-                                                                                                        test_percentage=0.1)
+                                                                                                        train_percentage=TRAIN_SPLIT,
+                                                                                                        val_percentage=VAL_SPLIT,
+                                                                                                        test_percentage=TEST_SPLIT)
         
-        self.database_dataloader = DataLoader(self.Zheng_68K_database, batch_size=self.batch_size,
-                                              num_workers=self.num_workers)
+        self.database_dataloader = None # Deprecated
          
-        print("database size =", len(self.Zheng_68K_database))
         print("train size =", len(self.Zheng_68K_train))
         print("val size =", len(self.Zheng_68K_val))
         print("test size =", len(self.Zheng_68K_test))
@@ -471,14 +463,12 @@ class AMBDataModule(pl.LightningDataModule):
           print(full_dataset[i])
         
         self.AMB_database, self.AMB_train, self.AMB_val, self.AMB_test = split_test_train_val_database_sets(full_dataset, 
-                                                                   train_percentage=0.3,
-                                                                   val_percentage=0.1, 
-                                                                   test_percentage=0.1)
+                                                                                                        train_percentage=TRAIN_SPLIT,
+                                                                                                        val_percentage=VAL_SPLIT,
+                                                                                                        test_percentage=TEST_SPLIT)
 
-        self.database_dataloader = DataLoader(self.AMB_database, batch_size=self.batch_size,
-                             num_workers=self.num_workers)
+        self.database_dataloader = None # Deprecated
         
-        print("database size =", len(self.AMB_database))
         print("train size =", len(self.AMB_train))
         print("val size =", len(self.AMB_val))
         print("test size =", len(self.AMB_test))
@@ -557,14 +547,12 @@ class XinDataModule(pl.LightningDataModule):
         full_dataset = CustomDataset(full_data, full_labels)
         
         self.Xin_database, self.Xin_train, self.Xin_val, self.Xin_test = split_test_train_val_database_sets(full_dataset, 
-                                                                   train_percentage=0.3,
-                                                                   val_percentage=0.1, 
-                                                                   test_percentage=0.1)
+                                                                                                        train_percentage=TRAIN_SPLIT,
+                                                                                                        val_percentage=VAL_SPLIT,
+                                                                                                        test_percentage=TEST_SPLIT)
 
-        self.database_dataloader = DataLoader(self.Xin_database, batch_size=self.batch_size,
-                             num_workers=self.num_workers)
-        
-        print("database size =", len(self.Xin_database))
+        self.database_dataloader = None # Deprecated
+
         print("train size =", len(self.Xin_train))
         print("val size =", len(self.Xin_val))
         print("test size =", len(self.Xin_test))

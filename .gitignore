@@ -8,6 +8,7 @@ lightning_logs/
 *.ckpt
 *.log
 lightning_logs
+run_job.sh
 
 __pycache__/
 .vscode/
