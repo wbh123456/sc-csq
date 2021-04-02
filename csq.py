@@ -201,8 +201,15 @@ class CSQLightening(pl.LightningModule):
         database_dataloader = self.trainer.datamodule.database_dataloader
         test_dataloader = self.trainer.datamodule.test_dataloader()
 
-        test_matrics_CHC = compute_metrics(test_dataloader, self, self.n_class, show_time=True)
+        test_matrics_CHC = compute_metrics(test_dataloader, self, self.n_class, show_time=True, use_cpu=True)
         test_labeling_accuracy_CHC, test_F1_score_weighted_average_CHC, test_F1_score_median_CHC, test_F1_score_per_class_CHC = test_matrics_CHC
+        
+        # Test speed
+        test_speed(test_dataloader, self, 200)
+        test_speed(test_dataloader, self, 500)
+        test_speed(test_dataloader, self, 1000)
+        test_speed(test_dataloader, self, 5000)
+        test_speed(test_dataloader, self, 10000)
 
         if not self.trainer.running_sanity_check:
             print(f"Epoch: {self.current_epoch}, Test_loss_epoch: {test_loss_epoch:.2f}")
@@ -281,8 +288,8 @@ if __name__ == '__main__':
         N_FEATURES = 20387
     elif dataset == "AMB":
         # annotation_level可以是3，16或者92
-        datamodule = AMBDataModule(num_workers=4, annotation_level=3)
-        N_CLASS = 3
+        datamodule = AMBDataModule(num_workers=4, annotation_level=92)
+        N_CLASS = 93
         N_FEATURES = 42625
     elif dataset == "XIN":
         datamodule = XinDataModule(num_workers=4, batch_size=128)
@@ -300,18 +307,14 @@ if __name__ == '__main__':
                                           verbose=True,
                                           mode='max')
 
-    trainer = pl.Trainer(max_epochs=max_epochs,
-                         gpus=1,
-                         check_val_every_n_epoch=5,
-                         #  limit_train_batches=0.2,
-                         #  limit_val_batches=0.2,
-                         #  accelerator='ddp',
-                         #  plugins='ddp_sharded',
-                         checkpoint_callback=checkpoint_callback
-                         )
 
     # To test against a specific checkpoint
     if test_checkpoint != '':
+        trainer = pl.Trainer(max_epochs=max_epochs,
+                        gpus=0,
+                        check_val_every_n_epoch=5,
+                        checkpoint_callback=checkpoint_callback
+                        )
         model = CSQLightening.load_from_checkpoint(
             test_checkpoint, n_class=N_CLASS, n_features=N_FEATURES)
         model.eval()
@@ -320,6 +323,15 @@ if __name__ == '__main__':
 
     # Train
     else:
+        trainer = pl.Trainer(max_epochs=max_epochs,
+                            gpus=1,
+                            check_val_every_n_epoch=5,
+                            #  limit_train_batches=0.2,
+                            #  limit_val_batches=0.2,
+                            #  accelerator='ddp',
+                            #  plugins='ddp_sharded',
+                            checkpoint_callback=checkpoint_callback
+                            )
         model = CSQLightening(N_CLASS, N_FEATURES, l_r=l_r, lamb_da=lamb_da,
                               beta=beta, lr_decay=lr_decay, decay_every=decay_every)
 

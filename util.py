@@ -53,7 +53,7 @@ def get_hash_centers(n_class, bit):
 
 
 # 计算所有metrics的top-level interface
-def compute_metrics(query_dataloader, net, class_num, show_time=False):
+def compute_metrics(query_dataloader, net, class_num, show_time=False, use_cpu=False):
       ''' Labeling Strategy:
       Closest Hash Center:
       Label the query using the label associated to the nearest hash center
@@ -62,17 +62,19 @@ def compute_metrics(query_dataloader, net, class_num, show_time=False):
         m = number of classes in database
       - Less Accurate
       '''
-
-      binaries_query, labels_query = compute_result(query_dataloader, net)
+      start_time_CHC = time.time()
+      if use_cpu:
+        binaries_query, labels_query = compute_result_cpu(query_dataloader, net)
+      else:
+        binaries_query, labels_query = compute_result(query_dataloader, net)
 
       # 根据自定义的labeling策略，得到预测的labels
-      start_time_CHC = time.time()
       labels_pred_CHC = get_labels_pred_closest_hash_center(binaries_query.cpu().numpy(), labels_query.numpy(),
                                                             net.hash_centers.numpy())
       CHC_duration = time.time() - start_time_CHC
       query_num = binaries_query.shape[0]
       if show_time:
-        print("  CHC query speed: {:.2f} queries/s".format(query_num/CHC_duration))
+        print("  - CHC query speed with {} test data: {:.2f} queries/s".format(query_num, query_num/CHC_duration))
       
       # (1) 自定义的labeling策略的accuracy
       labeling_accuracy_CHC = compute_labeling_strategy_accuracy(labels_pred_CHC, labels_query.numpy())
@@ -87,7 +89,33 @@ def compute_metrics(query_dataloader, net, class_num, show_time=False):
       CHC_metrics = (labeling_accuracy_CHC, F1_score_weighted_average_CHC, F1_score_median_CHC, F1_score_per_class_CHC)
 
       return CHC_metrics
-      
+
+def test_speed(dataloader, net, size=280):
+    # get 200 data samples and evaluate them
+    data_200, labels_200 = [], []
+    net.cpu()
+    net.eval()
+    for img, label in dataloader:
+        if len(data_200) > 0 and data_200[0].shape[0] * len(data_200) > size:
+            break
+        data_200.append(img)
+        labels_200.append(label)
+    data_200 = torch.cat(data_200)[:size]
+    labels = torch.cat(labels_200)[:size]
+
+    # Take the average of 6 runs as to calculate query speed
+    times = []
+    rep_num = 6
+    for i in range(rep_num):
+        start_time_CHC = time.time()
+        binary_codes = (net(data_200.cpu())).data
+        labels_pred_CHC = get_labels_pred_closest_hash_center(binary_codes.cpu().numpy(), labels.numpy(), net.hash_centers.numpy())
+        CHC_duration = time.time() - start_time_CHC
+        times.append(CHC_duration)
+    times = np.array(times)
+    query_num = binary_codes.shape[0]
+    print("  - Average CHC Query Speed with {} test data: {:.2f} queries/s, time = {:.2f}".format(query_num, query_num/times.mean(), times.mean()))
+    print("  - Each time =", times)
 
 
 # 了解Top K原理的链接：https://towardsdatascience.com/breaking-down-mean-average-precision-map-ae462f623a52
@@ -163,6 +191,16 @@ def compute_result(dataloader, net):
     for img, label in dataloader:
         labels.append(label)
         binariy_codes.append((net(img.cuda())).data)
+    return torch.cat(binariy_codes).sign(), torch.cat(labels)
+
+# 计算Binary和得到labels
+def compute_result_cpu(dataloader, net):
+    binariy_codes, labels = [], []
+    net.cpu()
+    net.eval()
+    for img, label in dataloader:
+        labels.append(label.cpu())
+        binariy_codes.append((net(img.cpu())).data)
     return torch.cat(binariy_codes).sign(), torch.cat(labels)
 
 

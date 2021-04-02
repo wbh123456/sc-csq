@@ -307,7 +307,7 @@ class BaronHumanDataModule(pl.LightningDataModule):
 
 class Zheng68KDataModule(pl.LightningDataModule):
 
-    def __init__(self, data_dir: str = './data', batch_size=64, num_workers=2, import_size=0.4):
+    def __init__(self, data_dir: str = './data', batch_size=64, num_workers=2, import_size=1.0):
         super().__init__()
         self.data_dir = data_dir
         self.batch_size = batch_size
