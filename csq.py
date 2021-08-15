@@ -206,7 +206,7 @@ class CSQLightening(pl.LightningModule):
         _, _,
         _) = train_matrics_CHC
 
-        if not self.trainer.running_sanity_check:
+        if not self.trainer.sanity_checking:
             print(f"Epoch: {self.current_epoch}, Val_loss_epoch: {val_loss_epoch:.2f}")
             print(f"val_F1_score_median_CHC:{val_F1_score_median_CHC:.3f}, \
                     val_labeling_accuracy_CHC:{val_labeling_accuracy_CHC:.3f},\
@@ -260,7 +260,7 @@ class CSQLightening(pl.LightningModule):
         # test_speed([test_dataloader, train_dataloader, val_dataloader], self, 20000)
         test_speed([test_dataloader, train_dataloader, val_dataloader], self, 1000000)
 
-        if not self.trainer.running_sanity_check:
+        if not self.trainer.sanity_checking:
             print(f"Epoch: {self.current_epoch}, Test_loss_epoch: {test_loss_epoch:.2f}")
             print(f"test_F1_score_median_CHC:{test_F1_score_median_CHC:.3f}, \
                     test_labeling_accuracy_CHC:{test_labeling_accuracy_CHC:.3f}, \
@@ -305,7 +305,7 @@ if __name__ == '__main__':
     # Parse parameters
     parser = argparse.ArgumentParser()
     # Hyperparameters
-    parser.add_argument("--l_r", type=float, default=1.2e-5,
+    parser.add_argument("--l_r", type=float, default=1.5e-5,
                         help="learning rate")
     parser.add_argument("--lamb", type=float, default=0.001,
                         help="lambda of quantization loss")
@@ -315,12 +315,12 @@ if __name__ == '__main__':
                         help="learning rate decay")
     parser.add_argument("--decay_every", type=int, default=100,
                         help="how many epochs a learning rate happens")
-    parser.add_argument("--weight_decay", type=float, default=0.0008,
+    parser.add_argument("--weight_decay", type=float, default=0.0006,
                         help="weight decay (L2 penalty)")
     parser.add_argument("--n_layers", type=int, default=5,
                         help="number of layers")
     # Training parameters
-    parser.add_argument("--epochs", type=int, default=301,
+    parser.add_argument("--epochs", type=int, default=401,
                         help="number of epochs to run")
     parser.add_argument("--dataset", choices=['TM', 'BaronHuman', 'Zheng68K', 'AMB', "XIN", "CellBench", "X10v2", "Pancreatic", "AlignedPancreatic"],
                         help="dataset to train against")
@@ -418,7 +418,7 @@ if __name__ == '__main__':
         trainer = pl.Trainer(max_epochs=max_epochs,
                 gpus=1,
                 check_val_every_n_epoch=5,
-                checkpoint_callback=[checkpoint_callback]
+                callbacks=[checkpoint_callback]
                 )
         best_model = CSQLightening.load_from_checkpoint(
             best_model_path, n_class=N_CLASS, n_features=N_FEATURES)
@@ -436,7 +436,7 @@ if __name__ == '__main__':
         trainer = pl.Trainer(max_epochs=max_epochs,
                         gpus=1,
                         check_val_every_n_epoch=5,
-                        checkpoint_callback=[checkpoint_callback]
+                        callbacks=[checkpoint_callback]
                         )
         model = CSQLightening.load_from_checkpoint(
             test_checkpoint, n_class=N_CLASS, n_features=N_FEATURES)

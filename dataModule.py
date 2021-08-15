@@ -365,7 +365,7 @@ class Zheng68KDataModule(pl.LightningDataModule):
         train_idx = np.array(train_idx[self.fold_num]) - 1
 
         self.Zheng_68K_test = Subset(full_dataset, test_idx)
-        self.Zheng_68K_train, self.Zheng_68K_val = split_train_val_database_sets(full_dataset, train_idx, train_percentage=0.95)
+        self.Zheng_68K_train, self.Zheng_68K_val = split_train_val_database_sets(full_dataset, train_idx, train_percentage=0.75)
         print("train size =", len(self.Zheng_68K_train))
         print("val size =", len(self.Zheng_68K_val))
         print("test size =", len(self.Zheng_68K_test))
